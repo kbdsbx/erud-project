@@ -1,0 +1,6 @@
+static/
+old/
+__pycache__
+cache.json
+cache-*.json
+transfor.json

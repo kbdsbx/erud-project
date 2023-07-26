@@ -1,0 +1,50 @@
+<form action="/{{page + 1}}" style="display: flex; flex-wrap: wrap" method="post">
+    {% for i in range(10) %}
+    <div style="display: flex;">
+        <img src="{{url_for('static', filename='proj-caches/%s.jpg' % (10 * (page - 1) + i + 1) )}}">
+        <div>
+            <input id="{{i}}1" type="radio" name="{{10 * (page - 1) + i + 1}}" value="1"
+            {% if labels[10 * (page - 1) + i] == 1 %}
+            checked
+            {% endif %}
+            >
+            <label for="{{i}}1">黑丝</label>
+        </div>
+        <div>
+            <input id="{{i}}2" type="radio" name="{{10 * (page - 1) + i + 1}}" value="2"
+            {% if labels[10 * (page - 1) + i] == 2 %}
+            checked
+            {% endif %}
+            >
+            <label for="{{i}}2">白丝</label>
+        </div>
+        <div>
+            <input id="{{i}}3" type="radio" name="{{10 * (page - 1) + i + 1}}" value="3"
+            {% if labels[10 * (page - 1) + i] == 3 %}
+            checked
+            {% endif %}
+            >
+            <label for="{{i}}3">花丝</label>
+        </div>
+        <div>
+            <input id="{{i}}4" type="radio" name="{{10 * (page - 1) + i + 1}}" value="4"
+            {% if labels[10 * (page - 1) + i] == 4 %}
+            checked
+            {% endif %}
+            >
+            <label for="{{i}}4">肉/裸</label>
+        </div>
+        <div>
+            <input id="{{i}}6" type="radio" name="{{10 * (page - 1) + i + 1}}" value="0"
+            {% if labels[10 * (page - 1) + i] == 0 %}
+            checked
+            {% endif %}
+            >
+            <label for="{{i}}6">无</label>
+        </div>
+    </div>
+    {% endfor %}
+
+    <input type="submit">
+    <button type="button" onclick="window.location.href='/{{page + 1}}'">下一页</button>
+</form>
