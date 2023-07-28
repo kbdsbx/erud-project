@@ -5,13 +5,13 @@ import json
 import math
 import time
 
-def getX(count = 4521) :
+def getX(count = 13563) :
     """
     获取图片样本
     
     count, int 图片样本数
     """
-    path = "D:\Study\proj\static\proj-caches"
+    path = "D:\Study\proj\static\proj-samples-enhance"
 
 
     x = np.zeros((count, 128, 192, 3))
@@ -20,20 +20,20 @@ def getX(count = 4521) :
     
     return np.array(x)
 
-def getY(count = 4521) :
+def getY(count = 13563) :
     """
     获取图片标签
     
     count, int 图片样本数
     """
-    labelfile = "D:\Study\proj\static\labelfile.json"
+    labelfile = "D:\Study\proj\static\labelfile-enhance.json"
     with open (labelfile, 'r', encoding='utf-8') as f:
         labels = json.loads(f.read())
     
     return np.array(labels[:count]).reshape((count, 1))
 
 
-def process_samples(X, Y, s, split=(0.9, 0.1)) :
+def process_samples(X, Y, s, split=(0.8, 0.2)) :
     """
     样本切分成多个小集合
 
@@ -58,7 +58,8 @@ def process_samples(X, Y, s, split=(0.9, 0.1)) :
 
     sp1 = math.floor(split[0] * m)
 
-    # 将数据集合分成训练集、测试集、验证集
+    # 将数据集合分成训练集、测试集
+    # 暂无验证集
     # 训练集
     train_X = shuffled_X[0:sp1, :, :, :]
     train_Y = shuffled_Y[0:sp1]
@@ -172,6 +173,7 @@ def stocking_classification () :
     rate = 0.002
     costs = []
     cost = 0
+    m = 4521 * 3
 
     # 开启缓存
     enable_cache = True
@@ -207,9 +209,9 @@ def stocking_classification () :
 
     # 加载所有样本
     print("Samples loading...")
-    X = getX(50)
-    Y = getY(50)
-    batches, train_X, train_Y, test_X, test_Y =  process_samples(X, Y, 10)
+    X = getX(m)
+    Y = getY(m)
+    batches, train_X, train_Y, test_X, test_Y =  process_samples(X, Y, 256)
     print("%d samples loaded." %(X.shape[0]))
 
     allParams = ['W11', 'W12', 'W21', 'W22', 'W31', 'W32', 'W41', 'W42', 'W51', 'W52', 'W6', 'b6', 'W7', 'b7', 'W8', 'b8']
@@ -302,25 +304,26 @@ def stocking_classification () :
         gtest.setData(name, g.getData(name))
 
 
-    # 分批计算训练集精度（内存不足...）
 
-    # accs = []
-    # sum_accs = 40
-    # for i in range(sum_accs) :
-    #     gtest.setData('X', train_X[100*i:100*(i+1), :, :, :])
-    #     gtest.setData('Y', train_Y[100*i:100*(i+1)])
+    if m > 100 :
+        # 分批计算训练集精度（内存不足...）
+        accs = []
+        sum_accs = int(math.floor(4521 * 3 * 0.8 / 100))
+        for i in range(sum_accs) :
+            gtest.setData('X', train_X[100*i:100*(i+1), :, :, :])
+            gtest.setData('Y', train_Y[100*i:100*(i+1)])
 
-    #     gtest.fprop()
-    #     accs.append(float(gtest.getData('J')))
+            gtest.fprop()
+            accs.append(float(gtest.getData('J')))
 
-    # avg_accs = sum(accs) / sum_accs
-    # print('train accuracy: %s' %(avg_accs))
+        avg_accs = sum(accs) / sum_accs
+        print('train accuracy: %s' %(avg_accs))
+    else :
+        gtest.setData('X', train_X)
+        gtest.setData('Y', train_Y)
 
-    gtest.setData('X', train_X)
-    gtest.setData('Y', train_Y)
-
-    gtest.fprop()
-    print('train accuracy: %s' %(gtest.getData('J')))
+        gtest.fprop()
+        print('train accuracy: %s' %(gtest.getData('J')))
 
     # 计算测试集精度
     gtest.setData('X', test_X)
