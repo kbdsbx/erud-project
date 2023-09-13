@@ -5,7 +5,7 @@ import json
 import math
 import time
 
-def getX(count = 13563) :
+def getX(count) :
     """
     获取图片样本
     
@@ -20,7 +20,7 @@ def getX(count = 13563) :
     
     return np.array(x)
 
-def getY(count = 13563) :
+def getY(count) :
     """
     获取图片标签
     
@@ -131,30 +131,80 @@ import erud
 # Y: (无，黑丝，白丝，花丝，裸足)
 
 # VGG-16 的魔改版
-# 294552 + 15360 + 5 = 309917 个参数
+# 294552 + 393216 + 4096 + 160 + 128 + 32 + 5 = 692189 个参数
 def stocking_classification () :
     code = """
     X:(1, 128, 192, 3) ->
 
-        conv2d_v3_same(1) W11:xavier((3, 3, 3, 8), 9) -> batchnorm2d -> relu ->
-        conv2d_v3_same(1) W12:xavier((3, 3, 8, 8), 9) -> batchnorm2d -> relu ->
+        conv2d_v3_same(1) W11:xavier((3, 3, 3, 8), 9):adam(0.0002) -> 
+        batchnorm2d as BN11 -> 
+        mul G11:randn(8):adam(0.0002) add T11:(8):adam(0.0002) -> 
+        relu ->
+        
+        conv2d_v3_same(1) W12:xavier((3, 3, 8, 8), 9):adam(0.0002) -> 
+        batchnorm2d as BN12 -> 
+        mul G12:randn(8):adam(0.0002) add T12:(8):adam(0.0002) -> 
+        relu ->
+
         max_pool_v3(2, 2, 2) ->
 
-        conv2d_v3_same(1) W21:xavier((3, 3, 8, 16), 9) -> batchnorm2d -> relu ->
-        conv2d_v3_same(1) W22:xavier((3, 3, 16, 16), 9) -> batchnorm2d -> relu ->
+        
+
+        conv2d_v3_same(1) W21:xavier((3, 3, 8, 16), 9):adam(0.0002) ->
+        batchnorm2d as BN21 ->
+        mul G21:randn(16):adam(0.0002) add T21:(16):adam(0.0002) ->
+        relu ->
+
+        conv2d_v3_same(1) W22:xavier((3, 3, 16, 16), 9):adam(0.0002) ->
+        batchnorm2d as BN22 ->
+        mul G22:randn(16):adam(0.0002) add T22:(16):adam(0.0002) ->
+        relu ->
+
         max_pool_v3(2, 2, 2) ->
 
-        conv2d_v3_same(1) W31:xavier((3, 3, 16, 32), 9) -> batchnorm2d -> relu ->
-        conv2d_v3_same(1) W32:xavier((3, 3, 32, 32), 9) -> batchnorm2d -> relu ->
+        
+
+        conv2d_v3_same(1) W31:xavier((3, 3, 16, 32), 9):adam(0.0002) ->
+        batchnorm2d as BN31 ->
+        mul G31:randn(32):adam(0.0002) add T31:(32):adam(0.0002) ->
+        relu ->
+
+        conv2d_v3_same(1) W32:xavier((3, 3, 32, 32), 9):adam(0.0002) ->
+        batchnorm2d as BN32 ->
+        mul G32:randn(32):adam(0.0002) add T32:(32):adam(0.0002) ->
+        relu ->
+
         max_pool_v3(2, 2, 2) ->
 
-        conv2d_v3_same(1) W41:xavier((3, 3, 32, 64), 9) -> batchnorm2d -> relu ->
-        conv2d_v3_same(1) W42:xavier((3, 3, 64, 64), 9) -> batchnorm2d -> relu ->
+        
+
+        conv2d_v3_same(1) W41:xavier((3, 3, 32, 64), 9):adam(0.0002) ->
+        batchnorm2d as BN41 ->
+        mul G41:randn(64):adam(0.0002) add T41:(64):adam(0.0002) ->
+        relu ->
+
+        conv2d_v3_same(1) W42:xavier((3, 3, 64, 64), 9):adam(0.0002) ->
+        batchnorm2d as BN42 ->
+        mul G42:randn(64):adam(0.0002) add T42:(64):adam(0.0002) ->
+        relu ->
+
         max_pool_v3(2, 2, 2) ->
 
-        conv2d_v3_same(1) W51:xavier((3, 3, 64, 128), 9) -> batchnorm2d -> relu ->
-        conv2d_v3_same(1) W52:xavier((3, 3, 128, 128), 9) -> batchnorm2d -> relu ->
+        
+
+        conv2d_v3_same(1) W51:xavier((3, 3, 64, 128), 9):adam(0.0002) ->
+        batchnorm2d as BN51 ->
+        mul G51:randn(128):adam(0.0002) add T51:(128):adam(0.0002) ->
+        relu ->
+
+        conv2d_v3_same(1) W52:xavier((3, 3, 128, 128), 9):adam(0.0002) ->
+        batchnorm2d as BN52 ->
+        mul G52:randn(128):adam(0.0002) add T52:(128):adam(0.0002) ->
+        relu ->
+
         max_pool_v3(2, 2, 2) ->
+
+        
 
     flatten ->
 
@@ -170,15 +220,16 @@ def stocking_classification () :
 
     num_iterations = 100
     num_over_iterations = 0
-    rate = 0.002
+    rate = 0.0002
     costs = []
     cost = 0
-    m = 4521 * 3
+    m = 50
+    mini = 10
 
     # 开启缓存
     enable_cache = True
     # 开启迁移学习
-    enable_transfor = True
+    enable_transfor = False
 
     # 缓存文件
     path = __file__[:__file__.rfind('\\')]
@@ -197,6 +248,8 @@ def stocking_classification () :
         num_iterations = obj['num_iterations']
         costs = obj['costs']
         rate = obj['rate']
+        m = obj['m']
+        mini = obj['mini']
     # 如果有迁移，则从旧网络中获取已经学习过的参数
     elif enable_transfor and os.path.exists(transforfile):
         transfordata = load_params_from_old_network(transforfile)
@@ -211,7 +264,7 @@ def stocking_classification () :
     print("Samples loading...")
     X = getX(m)
     Y = getY(m)
-    batches, train_X, train_Y, test_X, test_Y =  process_samples(X, Y, 256)
+    batches, train_X, train_Y, test_X, test_Y =  process_samples(X, Y, mini)
     print("%d samples loaded." %(X.shape[0]))
 
     allParams = ['W11', 'W12', 'W21', 'W22', 'W31', 'W32', 'W41', 'W42', 'W51', 'W52', 'W6', 'b6', 'W7', 'b7', 'W8', 'b8']
@@ -242,16 +295,20 @@ def stocking_classification () :
                 'num_over_iterations' : 1 + i + num_over_iterations,
                 'num_iterations' : num_iterations,
                 'rate' : rate,
+                'm' : m,
+                'mini' : mini,
             })
             print("Cost after iteration {}: {}.".format(i + num_over_iterations + 1, cost))
 
-        if (i + num_over_iterations + 1) % 10 == 0 :
+        if (i + num_over_iterations + 1) % 1 == 0 :
             # 多次备份缓存
             erud.nous_exports(n, path + '/cache-bk-' + str(i + num_over_iterations + 1) + '.json', {
                 'costs' : costs,
                 'num_over_iterations' : 1 + i + num_over_iterations,
                 'num_iterations' : num_iterations,
                 'rate' : rate,
+                'm' : m,
+                'mini' : mini,
             })
     print("Cost after iteration {}: {}.".format(num_iterations, cost))
 
@@ -266,24 +323,24 @@ def stocking_classification () :
     '''
     X ->
 
-        conv2d_v3_same(1) W11 -> batchnorm2d -> relu ->
-        conv2d_v3_same(1) W12 -> batchnorm2d -> relu ->
+        conv2d_v3_same(1) W11 -> batchnorm2d(0) as BN11 -> mul G11 add T11 -> relu ->
+        conv2d_v3_same(1) W12 -> batchnorm2d(0) as BN12 -> mul G12 add T12 -> relu ->
         max_pool_v3(2, 2, 2) ->
 
-        conv2d_v3_same(1) W21 -> batchnorm2d -> relu ->
-        conv2d_v3_same(1) W22 -> batchnorm2d -> relu ->
+        conv2d_v3_same(1) W21 -> batchnorm2d(0) as BN21 -> mul G21 add T21 -> relu ->
+        conv2d_v3_same(1) W22 -> batchnorm2d(0) as BN22 -> mul G22 add T22 -> relu ->
         max_pool_v3(2, 2, 2) ->
 
-        conv2d_v3_same(1) W31 -> batchnorm2d -> relu ->
-        conv2d_v3_same(1) W32 -> batchnorm2d -> relu ->
+        conv2d_v3_same(1) W31 -> batchnorm2d(0) as BN31 -> mul G31 add T31 -> relu ->
+        conv2d_v3_same(1) W32 -> batchnorm2d(0) as BN32 -> mul G32 add T32 -> relu ->
         max_pool_v3(2, 2, 2) ->
 
-        conv2d_v3_same(1) W41 -> batchnorm2d -> relu ->
-        conv2d_v3_same(1) W42 -> batchnorm2d -> relu ->
+        conv2d_v3_same(1) W41 -> batchnorm2d(0) as BN41 -> mul G41 add T41 -> relu ->
+        conv2d_v3_same(1) W42 -> batchnorm2d(0) as BN42 -> mul G42 add T42 -> relu ->
         max_pool_v3(2, 2, 2) ->
 
-        conv2d_v3_same(1) W51 -> batchnorm2d -> relu ->
-        conv2d_v3_same(1) W52 -> batchnorm2d -> relu ->
+        conv2d_v3_same(1) W51 -> batchnorm2d(0) as BN51 -> mul G51 add T51 -> relu ->
+        conv2d_v3_same(1) W52 -> batchnorm2d(0) as BN52 -> mul G52 add T52 -> relu ->
         max_pool_v3(2, 2, 2) ->
 
     flatten ->
@@ -326,12 +383,28 @@ def stocking_classification () :
         print('train accuracy: %s' %(gtest.getData('J')))
 
     # 计算测试集精度
-    gtest.setData('X', test_X)
-    gtest.setData('Y', test_Y)
 
-    gtest.fprop()
 
-    print('test accuracy: %s' %(gtest.getData('J')))
+    if m > 100 :
+        # 分批计算训练集精度（内存不足...）
+        accs = []
+        sum_accs = int(math.floor(4521 * 3 * 0.2 / 100))
+        for i in range(sum_accs) :
+            gtest.setData('X', test_X[100*i:100*(i+1), :, :, :])
+            gtest.setData('Y', test_X[100*i:100*(i+1)])
+
+            gtest.fprop()
+            accs.append(float(gtest.getData('J')))
+
+        avg_accs = sum(accs) / sum_accs
+        print('test accuracy: %s' %(avg_accs))
+    else :
+        gtest.setData('X', test_X)
+        gtest.setData('Y', test_Y)
+
+        gtest.fprop()
+
+        print('test accuracy: %s' %(gtest.getData('J')))
 
 
 stocking_classification()

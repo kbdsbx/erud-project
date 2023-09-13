@@ -5,13 +5,13 @@ import json
 import math
 import time
 
-def getX(count = 4521) :
+def getX(count) :
     """
     获取图片样本
     
     count, int 图片样本数
     """
-    path = "D:\Study\proj\static\proj-caches"
+    path = "D:\Study\proj\static\proj-samples-enhance"
 
 
     x = np.zeros((count, 128, 192, 3))
@@ -20,20 +20,19 @@ def getX(count = 4521) :
     
     return np.array(x)
 
-def getY(count = 4521) :
+def getY(count) :
     """
     获取图片标签
     
     count, int 图片样本数
     """
-    labelfile = "D:\Study\proj\static\labelfile.json"
+    labelfile = "D:\Study\proj\static\labelfile-enhance.json"
     with open (labelfile, 'r', encoding='utf-8') as f:
         labels = json.loads(f.read())
     
     return np.array(labels[:count]).reshape((count, 1))
 
-
-def process_samples(X, Y, s, split=(0.8, 0.1, 0.1)) :
+def process_samples(X, Y, s, split=(0.8, 0.2)) :
     """
     样本切分成多个小集合
 
@@ -44,9 +43,7 @@ def process_samples(X, Y, s, split=(0.8, 0.1, 0.1)) :
     返回值
     * batches (tX, tY) batchs
     * test_X
-    * test_Y one-hot向量组
-    * verify_X
-    * verify_Y one-hot向量组
+    * test_Y
     """
 
     m = X.shape[0]
@@ -55,27 +52,20 @@ def process_samples(X, Y, s, split=(0.8, 0.1, 0.1)) :
     np.random.seed(1)
 
     permutation = list(np.random.permutation(m))
-    # permutation = [i for i in range(m)]
     shuffled_X = X[permutation, :, :, :]
     shuffled_Y = Y[permutation]
 
     sp1 = math.floor(split[0] * m)
-    sp2 = math.floor((split[0] + split[1]) * m)
 
-    # 将数据集合分成训练集、测试集、验证集
+    # 将数据集合分成训练集、测试集
+    # 暂无验证集
     # 训练集
     train_X = shuffled_X[0:sp1, :, :, :]
     train_Y = shuffled_Y[0:sp1]
     train_Y_one_hot = np.eye(5)[train_Y.reshape(-1)]
-    train_idx = permutation[0:sp1]
     # 测试集
-    test_X = shuffled_X[sp1:sp2, :, :, :]
-    test_Y = shuffled_Y[sp1:sp2]
-    test_idx = permutation[sp1:sp2]
-    # 验证集
-    verify_X = shuffled_X[sp2:, :, :, :]
-    verify_Y = shuffled_Y[sp2:]
-    verify_idx = permutation[sp2:]
+    test_X = shuffled_X[sp1:, :, :, :]
+    test_Y = shuffled_Y[sp1:]
 
     # 将训练集分成多个bench
     train_m = train_X.shape[0]
@@ -97,19 +87,7 @@ def process_samples(X, Y, s, split=(0.8, 0.1, 0.1)) :
         batches.append(miniB)
 
     
-    return batches, train_X, train_Y, test_X, test_Y, verify_X, verify_Y, train_idx, test_idx, verify_idx
-
-# X = getX(10)
-# Y = getY(10)
-
-# batches, train_X, train_Y, test_X, test_Y, verify_X, verify_Y =  process_samples(X, Y, 2)
-# print(len(batches))
-# print(train_X.shape)
-# print(train_Y.shape)
-# print(test_X.shape)
-# print(test_Y.shape)
-# print(verify_X.shape)
-# print(verify_Y.shape)
+    return batches, train_X, train_Y, test_X, test_Y
 
 
 import sys
@@ -127,69 +105,82 @@ import erud
 
 # VGG-16 的魔改版
 # 294552 + 15360 + 5 = 309917 个参数
-def stocking_classification () :
+def stocking_classification (count) :
    
     path = __file__[:__file__.rfind('\\')]
 
     # 加载所有样本
-    print("Samples loading...")
-    X = getX(4521)
-    Y = getY(4521)
-    batches, train_X, train_Y, test_X, test_Y, verify_X, verify_Y, train_idx, test_idx, verify_idx =  process_samples(X, Y, 64)
-    print("%d samples loaded." %(X.shape[0]))
+    # print("Samples loading...")
+    X = getX(count)
+    Y = getY(count)
+    # print("%d samples loaded." %(X.shape[0]))
 
     gtest = erud.nous(
-        '''
-        X ->
+    '''
+    X ->
 
-            conv2d_v3_same(1) W11 -> conv2d_v3_same(1) W12 -> max_pool_v3(2, 2, 2) -> batchnorm ->
+        conv2d_v3_same(1) W11 -> batchnorm2d -> relu ->
+        conv2d_v3_same(1) W12 -> batchnorm2d -> relu ->
+        max_pool_v3(2, 2, 2) ->
 
-            conv2d_v3_same(1) W21 -> conv2d_v3_same(1) W22 -> max_pool_v3(2, 2, 2) -> batchnorm ->
+        conv2d_v3_same(1) W21 -> batchnorm2d -> relu ->
+        conv2d_v3_same(1) W22 -> batchnorm2d -> relu ->
+        max_pool_v3(2, 2, 2) ->
 
-            conv2d_v3_same(1) W31 -> conv2d_v3_same(1) W32 -> max_pool_v3(2, 2, 2) -> batchnorm ->
+        conv2d_v3_same(1) W31 -> batchnorm2d -> relu ->
+        conv2d_v3_same(1) W32 -> batchnorm2d -> relu ->
+        max_pool_v3(2, 2, 2) ->
 
-            conv2d_v3_same(1) W41 -> conv2d_v3_same(1) W42 -> max_pool_v3(2, 2, 2) -> batchnorm ->
+        conv2d_v3_same(1) W41 -> batchnorm2d -> relu ->
+        conv2d_v3_same(1) W42 -> batchnorm2d -> relu ->
+        max_pool_v3(2, 2, 2) ->
 
-            conv2d_v3_same(1) W51 -> conv2d_v3_same(1) W52 -> max_pool_v3(2, 2, 2) -> batchnorm ->
+        conv2d_v3_same(1) W51 -> batchnorm2d -> relu ->
+        conv2d_v3_same(1) W52 -> batchnorm2d -> relu ->
+        max_pool_v3(2, 2, 2) ->
 
-            flatten -> matmul W6 add b6 ->
+    flatten ->
 
-        max_index(1) -> J:$$
-        '''
+        matmul W6 add b6 -> relu ->
+
+        matmul W7 add b7 -> relu ->
+
+        matmul W8 add b8 ->
+
+    J:$$
+    # max_index(1) -> accuracy Y -> J:$$
+    '''
     ).parse()
 
-    gtest.setData('X', test_X)
+    gtest.setData('X', X)
     # gtest.setData('Y', test_Y)
+
+
+    allParams = ['W11', 'W12', 'W21', 'W22', 'W31', 'W32', 'W41', 'W42', 'W51', 'W52', 'W6', 'b6', 'W7', 'b7', 'W8', 'b8']
 
     n, obj = erud.nous_imports(path + '/cache.json')
     g = n.g
-    gtest.setData('W11', g.getData('W11'))
-    gtest.setData('W12', g.getData('W12'))
-    gtest.setData('W21', g.getData('W21'))
-    gtest.setData('W22', g.getData('W22'))
-    gtest.setData('W31', g.getData('W31'))
-    gtest.setData('W32', g.getData('W32'))
-    gtest.setData('W41', g.getData('W41'))
-    gtest.setData('W42', g.getData('W42'))
-    gtest.setData('W51', g.getData('W51'))
-    gtest.setData('W52', g.getData('W52'))
-    gtest.setData('W6', g.getData('W6'))
-    gtest.setData('b6', g.getData('b6'))
+    
+    # 迁移参数
+    for name in allParams :
+        gtest.setData(name, g.getData(name))
+
     gtest.fprop()
-    print('List of label:')
+    # print('List of label:')
     yhats = gtest.getData('J')
-    train = test_Y
-    idxs = test_idx
-    enum = {
-        0: "无",
-        1: "黑丝",
-        2: "白丝",
-        3: "花丝",
-        4: "裸足",
-    }
-    for i in range(len(yhats)) :
-        if yhats[i,0] != train[i,0] :
-            print("%d.jpg is not %s but %s." %(idxs[i] + 1, enum[yhats[i,0]], enum[train[i,0]]))
+    print(yhats)
+    # train = test_Y
+    # idxs = test_idx
+    # enum = {
+    #     0: "无",
+    #     1: "黑丝",
+    #     2: "白丝",
+    #     3: "花丝",
+    #     4: "裸足",
+    # }
+    # for i in range(len(yhats)) :
+    #     if yhats[i,0] != train[i,0] :
+    #         print("%d.jpg is not %s but %s." %(idxs[i] + 1, enum[yhats[i,0]], enum[train[i,0]]))
 
 
 
@@ -261,7 +252,9 @@ def stocking_classification () :
     # print('test accuracy: %s' %(gtest.getData('J')))
 
 
-stocking_classification()
+stocking_classification(1)
+stocking_classification(2)
+stocking_classification(3)
 
 
 
